@@ -21,7 +21,7 @@ class App extends Component {
     // Don't copy this it's just for testing usage of refs.game for child function call
     document.addEventListener('keydown', (event) => {
       if (event.keyCode === 13) {
-        this.refs.game.startLevel(1);
+        this.refs.game.startGame();
       }
     });
   }
