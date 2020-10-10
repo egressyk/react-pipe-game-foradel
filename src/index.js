@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { render } from 'react-dom';
-import Game from './Game'
+import PipeGame from './PipeGame'
 import './style.css';
 
 class App extends Component {
@@ -37,7 +37,7 @@ class App extends Component {
   render() {
     return (
       <div>
-        <Game ref="game" 
+        <PipeGame ref="game" 
           gameSettings={this.myGameSettings}
           onLevelEnd={this.myOnLevelEndFunction}
           onGameEnd={this.myOnGameEndFunction}

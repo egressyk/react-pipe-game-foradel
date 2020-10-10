@@ -13,7 +13,7 @@ const Engine = Matter.Engine,
       Constraint = Matter.Constraint,
       Vector = Matter.Vector;
 
-class Game extends React.Component {
+class PipeGame extends React.Component {
   
   // Default game settings. Any of them can be changed as it pleases by passing gameSettings prop
   gameSettings = {
@@ -404,4 +404,4 @@ class Game extends React.Component {
     return <div ref="game" />;
   }
 }
-export default Game;
+export default PipeGame;
