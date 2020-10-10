@@ -28,7 +28,6 @@ class PipeGame extends React.Component {
     roundTime: 120,
     canvasHeigth: 600,
     canvasWidth: 600,
-    seesawBlockSize: 50,
     seesawPosY: 400,
     seesawAngularVelocity: Math.PI/180,
     ballSize: 20,
@@ -41,7 +40,7 @@ class PipeGame extends React.Component {
     showBallsLost: false,
     keyCodeBlow: 85,  // 'w' key
     keyCodeStartBall: 32, // 'space' key
-
+    
     pipePosY: 300,
     pipeWallWidth: 10,
     pipeHeight: 525,
@@ -51,7 +50,8 @@ class PipeGame extends React.Component {
     randomBlowForceMax: 0.1,
     restartTime: 2,
     blowDelay: 2000,
-
+    goalAreaHeight: 50,
+    
   }
 
   gameState = {
@@ -97,7 +97,7 @@ class PipeGame extends React.Component {
     // this.initDisplayResult();
     this.initControl(this.gameObjects.ball);
     this.initRandomBlows(this.gameObjects.ball)
-    // this.initBallOnSpotDetection(this.gameObjects.seesaw);
+    this.initBallOnSpotDetection(this.gameObjects.pipe);
     this.initBallLossHandling(this.gameObjects.ball);
     // this.initTimerHandling();
 
@@ -137,7 +137,7 @@ class PipeGame extends React.Component {
       this.gameSettings.canvasWidth / 2 - pipeWidth, 
       this.gameSettings.pipePosY, 
       this.gameSettings.pipeWallWidth,
-      this.gameSettings.seesawBlockSize,
+      this.gameSettings.goalAreaHeight,
       {
         isStatic: true,
         render: {
@@ -161,7 +161,7 @@ class PipeGame extends React.Component {
       this.gameSettings.canvasWidth / 2 + pipeWidth, 
       this.gameSettings.pipePosY, 
       this.gameSettings.pipeWallWidth,
-      this.gameSettings.seesawBlockSize,
+      this.gameSettings.goalAreaHeight,
       {
         isStatic: true,
         render: {
@@ -169,7 +169,7 @@ class PipeGame extends React.Component {
       }
     });
 
-    return Body.create({parts: [pipeWallLeft, spotLeft, pipeWallRight, spotRight], isStatic: true});
+    return Body.create({parts: [pipeWallLeft, pipeWallRight, spotLeft, spotRight], isStatic: true});
   }
 
   initControl(ball) {
@@ -281,24 +281,37 @@ class PipeGame extends React.Component {
     });
   }
 
-  initBallOnSpotDetection(seesaw) {
+  initBallOnSpotDetection(pipe) {
     const palette = this.gameSettings.palette;
+    const wasOnSpot = false;
+    const areaTopEdge = this.gameSettings.pipePosY - this.gameSettings.goalAreaHeight / 2 - this.gameSettings.ballSize / 2;
+    const areaBottomEdge = this.gameSettings.pipePosY + this.gameSettings.goalAreaHeight / 2 + this.gameSettings.ballSize / 2;
 
     // Change color when collision starts
+    Events.on(this.gameState.render, "afterRender", (event) => {
+      const ballInGoalArea = this.gameObjects.ball.position.y > areaTopEdge || this.gameObjects.ball.position.y < areaBottomEdge; 
+      if (ballInGoalArea && !wasOnSpot) { 
+        pipe.parts[2].render.fillStyle = palette.goalAreaActive;
+        pipe.parts[3].render.fillStyle = palette.goalAreaActive;
+      } else if (!ballInGoalArea && wasOnSpot) {
+        pipe.parts[2].render.fillStyle = palette.goalAreaInactive;
+        pipe.parts[3].render.fillStyle = palette.goalAreaInactive;
+      }
+    });
     Events.on(this.gameState.engine, 'collisionStart', (event) => {
-        const goalBlock = seesaw.parts[this.gameState.goalBlockIndex];
+        console.log('Colliding');
         const pairs = event.pairs;
         for (var i = 0; i < pairs.length; i++) {
           if (pairs[i].bodyA === goalBlock ||
           pairs[i].bodyB === goalBlock) {
             goalBlock.render.fillStyle = palette.goalAreaActive;
+            pipe.parts[3].render.fillStyle = palette.goalAreaActive;
           }
         }
     });
 
     // Detect time spent on the spot
     Events.on(this.gameState.engine, 'collisionActive', (event) => {
-        const goalBlock = seesaw.parts[this.gameState.goalBlockIndex];
         const pairs = event.pairs;
         for (var i = 0; i < pairs.length; i++) {
           if (pairs[i].bodyA == goalBlock || 
@@ -315,24 +328,11 @@ class PipeGame extends React.Component {
 
     // Reset measureTime values when leaving goal area
     Events.on(this.gameState.engine, 'collisionEnd', (event) => {
-        const goalBlock = seesaw.parts[this.gameState.goalBlockIndex];
         const pairs = event.pairs;
         for (var i = 0; i < pairs.length; i++) {
           if (pairs[i].bodyA === goalBlock || pairs[i].bodyB === goalBlock) {
             this.gameState.measureTimeStart = null;
             this.gameState.measureTimeEnd = null;
-          }
-        }
-    });
-
-    // Change color when collision ends
-    Events.on(this.gameState.engine, 'collisionEnd', (event) => {
-        const goalBlock = seesaw.parts[this.gameState.goalBlockIndex];
-        const pairs = event.pairs;
-        for (var i = 0; i < pairs.length; i++) {
-          if (pairs[i].bodyA == goalBlock ||
-          pairs[i].bodyB == goalBlock) {
-            goalBlock.render.fillStyle = palette.goalAreaInactive;
           }
         }
     });
