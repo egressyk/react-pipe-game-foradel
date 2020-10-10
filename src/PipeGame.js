@@ -48,7 +48,9 @@ class PipeGame extends React.Component {
     ballFriction: 0,
     ballAirFriction: 0.05,
     blowForce: 0.03,
-    restartTime: 2
+    randomBlowForceMax: 0.1,
+    restartTime: 2,
+    blowDelay: 2000,
 
   }
 
@@ -58,7 +60,8 @@ class PipeGame extends React.Component {
     currentTimeLeft: null,
     currentBallsLost: 0,
     currentStartTimestamp: 0,
-    ballActivationTimestamp: 0,
+    ballActivationTime: 0,
+    lastRandomBlowTime: 0,
     currentLevelHasStarted: false,
     currentTimerHasStarted: false,
     results: [],
@@ -84,15 +87,11 @@ class PipeGame extends React.Component {
     this.initializeMatterJS();
 
     // Setup game objects
-    // this.gameObjects.seesaw = this.createSeesaw();
     this.gameObjects.ball = this.createBall();
     this.gameObjects.pipe = this.createPipe();
 
     // Add game objects to world
-    World.add(this.gameState.engine.world, [
-      this.gameObjects.pipe.pipeWallLeft,
-      this.gameObjects.pipe.pipeWallRight,
-    ]);
+    World.add(this.gameState.engine.world, this.gameObjects.pipe);
     
     // Initialize event handlers
     // this.initDisplayResult();
@@ -134,6 +133,18 @@ class PipeGame extends React.Component {
       }
     });
 
+    const spotLeft = Bodies.rectangle(
+      this.gameSettings.canvasWidth / 2 - pipeWidth, 
+      this.gameSettings.pipePosY, 
+      this.gameSettings.pipeWallWidth,
+      this.gameSettings.seesawBlockSize,
+      {
+        isStatic: true,
+        render: {
+          fillStyle: this.gameSettings.palette.goalAreaInactive
+      }
+    });
+
     const pipeWallRight = Bodies.rectangle(
       this.gameSettings.canvasWidth / 2 + pipeWidth, 
       this.gameSettings.pipePosY, 
@@ -146,7 +157,19 @@ class PipeGame extends React.Component {
       }
     });
 
-    return {pipeWallLeft, pipeWallRight};
+    const spotRight = Bodies.rectangle(
+      this.gameSettings.canvasWidth / 2 + pipeWidth, 
+      this.gameSettings.pipePosY, 
+      this.gameSettings.pipeWallWidth,
+      this.gameSettings.seesawBlockSize,
+      {
+        isStatic: true,
+        render: {
+          fillStyle: this.gameSettings.palette.goalAreaInactive
+      }
+    });
+
+    return Body.create({parts: [pipeWallLeft, spotLeft, pipeWallRight, spotRight], isStatic: true});
   }
 
   initControl(ball) {
@@ -163,12 +186,19 @@ class PipeGame extends React.Component {
   }
 
   initRandomBlows(ball) {
-    const lastBlowTimestamp = 0;
     Events.on(this.gameState.render, "afterRender", (event) => {
-      if (false) {
+      if (!this.gameState.ballActivationTime) { return; }
+      const itsTime = this.gameState.lastRandomBlowTime ?
+        event.timestamp - this.gameState.lastRandomBlowTime >= this.gameSettings.blowDelay :
+        event.timestamp - this.gameState.ballActivationTime >= this.gameSettings.blowDelay;
+      if (itsTime) {
+          console.log('Its time');
           const randomDirection = Math.round(Math.random()) ? -1 : 1;
-          const randomForce = Math.round(Math.random() * 3);
+          const precision = this.precision(this.gameSettings.randomBlowForceMax);
+          const precisionOffset = Math.pow(10, precision);
+          const randomForce = Math.round(Math.random() * this.gameSettings.randomBlowForceMax * precisionOffset) / precisionOffset;
           Body.applyForce(ball, ball.position, {x: 0, y: randomDirection * randomForce});
+          this.gameState.lastRandomBlowTime = event.timestamp;
       };
     });
   }
@@ -341,6 +371,8 @@ class PipeGame extends React.Component {
     Body.setAngle(ball, 0);
     Body.setVelocity(ball, {x: 0, y: 0});
     Body.setAngularVelocity(ball, 0);
+    this.gameState.ballActivationTime = 0;
+    this.gameState.lastRandomBlowTime = 0;
   }
 
   // resetBalls() {
@@ -358,8 +390,10 @@ class PipeGame extends React.Component {
       if (!this.gameState.currentTimerHasStarted) {
         this.gameState.currentTimerHasStarted = true;
         this.gameState.currentStartTimestamp = this.gameState.engine.timing.timestamp;
-        this.gameState.ballActivationTimestamp = this.gameState.engine.timing.timestamp + this.gameSettings.restartTime;
       }
+      this.gameState.ballActivationTime = this.gameState.engine.timing.timestamp + this.gameSettings.restartTime;
+      this.gameState.lastRandomBlowTime = 0;
+      console.log(this.gameState.ballActivationTime);
     }
   }
 
@@ -398,6 +432,13 @@ class PipeGame extends React.Component {
     } else {
       typeof this.props.onGameEnd === 'function' && this.props.onGameEnd(this.gameState.results);
     }
+  }
+
+  precision(num) {
+    if (!isFinite(num)) return 0;
+    var e = 1, p = 0;
+    while (Math.round(num * e) / e !== num) { e *= 10; p++; }
+    return p;
   }
 
   render() {
