@@ -94,7 +94,7 @@ class PipeGame extends React.Component {
     World.add(this.gameState.engine.world, this.gameObjects.pipe);
     
     // Initialize event handlers
-    // this.initDisplayResult();
+    this.initDisplayResult();
     this.initControl(this.gameObjects.ball);
     this.initRandomBlows(this.gameObjects.ball)
     this.initBallOnSpotDetection(this.gameObjects.pipe);
@@ -154,7 +154,7 @@ class PipeGame extends React.Component {
         isStatic: true,
         render: {
           fillStyle: this.gameSettings.palette.seesaw
-      }
+        }
     });
 
     const spotRight = Bodies.rectangle(
@@ -168,10 +168,27 @@ class PipeGame extends React.Component {
           fillStyle: this.gameSettings.palette.goalAreaInactive
       }
     });
-
+    
     return Body.create({parts: [pipeWallLeft, pipeWallRight, spotLeft, spotRight], isStatic: true});
   }
-
+  
+  createBall() {
+    return Bodies.circle(
+      this.gameSettings.canvasWidth / 2,
+      this.gameSettings.pipePosY,
+      this.gameSettings.ballSize, 
+      { 
+        friction: this.gameSettings.ballFriction,
+        frictionAir: this.gameSettings.ballAirFriction,
+        restitution: this.gameSettings.ballRestitution,
+        density: this.gameSettings.ballDensity,
+        render: {
+          fillSytle: this.gameSettings.palette.ball 
+        }
+      }
+    );
+  }
+  
   initControl(ball) {
     // const position = Vector.create(this.gameSettings.canvasWidth / 2, 0)
     // const force = Vector.create(this.gameSettings.canvasWidth / 2, -this.gameSettings.blowForce);
@@ -203,61 +220,6 @@ class PipeGame extends React.Component {
     });
   }
 
-  setGoalBlockIndex(seesaw) {
-    switch(this.gameState.currentLevel) {
-      case 1: {
-        this.gameState.goalBlockIndex= 5;
-        break;
-      }
-      case 2: {
-        this.gameState.goalBlockIndex = 4;
-        break;
-      }
-      case 3: {
-        this.gameState.goalBlockIndex = 6;
-        break;
-      }
-      case 4: {
-        this.gameState.goalBlockIndex = 3;
-        break;
-      }
-      case 5: {
-        this.gameState.goalBlockIndex = 7;
-        break;
-      }
-      case 6: {
-        this.gameState.goalBlockIndex = 2;
-        break;
-      }
-      case 7: {
-        this.gameState.goalBlockIndex = 8;
-        break;
-      }
-      default: {
-        break;
-      }
-    }
-    seesaw.parts.forEach( part => part.render.fillStyle = this.gameSettings.palette.seesaw);
-    seesaw.parts[this.gameState.goalBlockIndex].render.fillStyle = this.gameSettings.palette.goalAreaInactive;
-  }
-
-  createBall() {
-    return Bodies.circle(
-      this.gameSettings.canvasWidth / 2,
-      this.gameSettings.pipePosY,
-      this.gameSettings.ballSize, 
-      { 
-        friction: this.gameSettings.ballFriction,
-        frictionAir: this.gameSettings.ballAirFriction,
-        restitution: this.gameSettings.ballRestitution,
-        density: this.gameSettings.ballDensity,
-        render: {
-          fillSytle: this.gameSettings.palette.ball 
-        }
-      }
-    );
-  }
-
   initDisplayResult() {
     // Don't set event listener if there's nothing to display at all
     if (!this.gameSettings.showTimeLeft && !this.gameSettings.showTimeOnSpot && !this.gameSettings.showBallsLost) { return; }
@@ -283,58 +245,43 @@ class PipeGame extends React.Component {
 
   initBallOnSpotDetection(pipe) {
     const palette = this.gameSettings.palette;
-    const wasOnSpot = false;
-    const areaTopEdge = this.gameSettings.pipePosY - this.gameSettings.goalAreaHeight / 2 - this.gameSettings.ballSize / 2;
-    const areaBottomEdge = this.gameSettings.pipePosY + this.gameSettings.goalAreaHeight / 2 + this.gameSettings.ballSize / 2;
-
-    // Change color when collision starts
-    Events.on(this.gameState.render, "afterRender", (event) => {
-      const ballInGoalArea = this.gameObjects.ball.position.y > areaTopEdge || this.gameObjects.ball.position.y < areaBottomEdge; 
-      if (ballInGoalArea && !wasOnSpot) { 
-        pipe.parts[2].render.fillStyle = palette.goalAreaActive;
-        pipe.parts[3].render.fillStyle = palette.goalAreaActive;
-      } else if (!ballInGoalArea && wasOnSpot) {
-        pipe.parts[2].render.fillStyle = palette.goalAreaInactive;
-        pipe.parts[3].render.fillStyle = palette.goalAreaInactive;
+    const areaTopEdge = this.gameSettings.pipePosY - this.gameSettings.goalAreaHeight / 2 - this.gameSettings.ballSize;
+    const areaBottomEdge = this.gameSettings.pipePosY + this.gameSettings.goalAreaHeight / 2 + this.gameSettings.ballSize;
+    let wasOnSpot = false;
+    console.log(this.gameObjects.ball.position.y, areaTopEdge, areaBottomEdge);
+    
+    const measureTimeInArea = (event) => {
+      this.gameState.measureTimeEnd = event.timestamp;
+      if (this.gameState.measureTimeStart && this.gameState.measureTimeEnd) {
+        
+        this.gameState.currentTimeSpentOnSpot += this.gameState.measureTimeEnd - this.gameState.measureTimeStart;
       }
-    });
-    Events.on(this.gameState.engine, 'collisionStart', (event) => {
-        console.log('Colliding');
-        const pairs = event.pairs;
-        for (var i = 0; i < pairs.length; i++) {
-          if (pairs[i].bodyA === goalBlock ||
-          pairs[i].bodyB === goalBlock) {
-            goalBlock.render.fillStyle = palette.goalAreaActive;
-            pipe.parts[3].render.fillStyle = palette.goalAreaActive;
-          }
-        }
-    });
+      this.gameState.measureTimeStart = this.gameState.measureTimeEnd;
+    }
 
-    // Detect time spent on the spot
-    Events.on(this.gameState.engine, 'collisionActive', (event) => {
-        const pairs = event.pairs;
-        for (var i = 0; i < pairs.length; i++) {
-          if (pairs[i].bodyA == goalBlock || 
-          pairs[i].bodyB === goalBlock) {
-            this.gameState.measureTimeEnd = event.source.timing.timestamp;
-            if (this.gameState.measureTimeStart && this.gameState.measureTimeEnd) {
-              
-              this.gameState.currentTimeSpentOnSpot += this.gameState.measureTimeEnd - this.gameState.measureTimeStart;
-            }
-            this.gameState.measureTimeStart = this.gameState.measureTimeEnd;
-          }
-        }
-    }); 
+    const resetTimerOnLeave = () => {
+      this.gameState.measureTimeStart = null;
+      this.gameState.measureTimeEnd = null;
+    }
 
-    // Reset measureTime values when leaving goal area
-    Events.on(this.gameState.engine, 'collisionEnd', (event) => {
-        const pairs = event.pairs;
-        for (var i = 0; i < pairs.length; i++) {
-          if (pairs[i].bodyA === goalBlock || pairs[i].bodyB === goalBlock) {
-            this.gameState.measureTimeStart = null;
-            this.gameState.measureTimeEnd = null;
-          }
-        }
+    Events.on(this.gameState.render, "afterRender", (event) => {
+      const ballInGoalArea = this.gameState.ballActivationTime && 
+        (this.gameObjects.ball.position.y > areaTopEdge && this.gameObjects.ball.position.y < areaBottomEdge); 
+      // Ball enters goal area
+      if (ballInGoalArea && !wasOnSpot) { 
+        pipe.parts[3].render.fillStyle = palette.goalAreaActive;
+        pipe.parts[4].render.fillStyle = palette.goalAreaActive;
+        wasOnSpot = true;
+      // Ball leaves goal area
+      } else if (!ballInGoalArea && wasOnSpot) {
+        pipe.parts[3].render.fillStyle = palette.goalAreaInactive;
+        pipe.parts[4].render.fillStyle = palette.goalAreaInactive;
+        resetTimerOnLeave();
+        wasOnSpot = false;
+      }
+      if (ballInGoalArea) {
+        measureTimeInArea(event);
+      }
     });
   }
 
@@ -375,15 +322,6 @@ class PipeGame extends React.Component {
     this.gameState.lastRandomBlowTime = 0;
   }
 
-  // resetBalls() {
-  //   this.gameObjects.balls.forEach( ball => this.resetBall(ball) );
-  // }
-
-  // resetSeesaw(seesaw) {
-  //   Body.setAngle(seesaw, 0);
-  //   Body.setAngularVelocity(seesaw, 0);
-  // }
-
   startBall(ball) {
     if (this.gameState.currentLevelHasStarted && ball) {
       World.add(this.gameState.engine.world, ball);
@@ -393,7 +331,6 @@ class PipeGame extends React.Component {
       }
       this.gameState.ballActivationTime = this.gameState.engine.timing.timestamp + this.gameSettings.restartTime;
       this.gameState.lastRandomBlowTime = 0;
-      console.log(this.gameState.ballActivationTime);
     }
   }
 
@@ -410,8 +347,6 @@ class PipeGame extends React.Component {
       measureTimeEnd: null,
     })
     this.resetBall(this.gameObjects.ball);
-    // this.resetSeesaw(this.gameObjects.seesaw);
-    // this.setGoalBlockIndex(this.gameObjects.seesaw);
   }
 
   endLevel() {
