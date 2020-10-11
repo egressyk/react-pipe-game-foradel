@@ -39,7 +39,6 @@ class App extends Component {
       <div>
         <PipeGame ref="game" 
           gameSettings={this.myGameSettings}
-          onLevelEnd={this.myOnLevelEndFunction}
           onGameEnd={this.myOnGameEndFunction}
         />
       </div>

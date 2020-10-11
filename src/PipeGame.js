@@ -21,26 +21,21 @@ class PipeGame extends React.Component {
       textColor: "orange",
       background: '#32343E',
       ball: '#ff502f',
-      seesaw: '#004d61',
+      pipe: '#004d61',
       goalAreaInactive: '#348498',
       goalAreaActive: '#5bd1d7',
     },
-    roundTime: 120,
+    gameTime: 120,
     canvasHeigth: 600,
     canvasWidth: 600,
-    seesawPosY: 400,
-    seesawAngularVelocity: Math.PI/180,
     ballSize: 20,
     ballDensity: 0.002,
-    ballRestitution: 0.3,
     ballPosY: 100,
-    ballSpawnOffset: 70,
     showTimeLeft: true,
     showTimeOnSpot: false,
     showBallsLost: false,
     keyCodeBlow: 85,  // 'w' key
     keyCodeStartBall: 32, // 'space' key
-    
     pipePosY: 300,
     pipeWallWidth: 10,
     pipeHeight: 525,
@@ -49,22 +44,21 @@ class PipeGame extends React.Component {
     blowForce: 0.03,
     randomBlowForceMax: 0.1,
     restartTime: 2,
-    blowDelay: 2000,
+    randomBlowDelay: 2000,
     goalAreaHeight: 50,
     
   }
 
   gameState = {
-    currentLevel: 1,
     currentTimeSpentOnSpot: 0,
     currentTimeLeft: null,
     currentBallsLost: 0,
     currentStartTimestamp: 0,
     ballActivationTime: 0,
     lastRandomBlowTime: 0,
-    currentLevelHasStarted: false,
+    gameHasStarted: false,
     currentTimerHasStarted: false,
-    results: [],
+    results: null,
     goalBlockIndex: null,
     measureTimeStart: null,
     measureTimeEnd: null,
@@ -99,7 +93,7 @@ class PipeGame extends React.Component {
     this.initRandomBlows(this.gameObjects.ball)
     this.initBallOnSpotDetection(this.gameObjects.pipe);
     this.initBallLossHandling(this.gameObjects.ball);
-    // this.initTimerHandling();
+    this.initTimerHandling();
 
     Engine.run(this.gameState.engine);
     Render.run(this.gameState.render);
@@ -129,7 +123,7 @@ class PipeGame extends React.Component {
       {
         isStatic: true,
         render: {
-          fillStyle: this.gameSettings.palette.seesaw
+          fillStyle: this.gameSettings.palette.pipe
       }
     });
 
@@ -153,7 +147,7 @@ class PipeGame extends React.Component {
       {
         isStatic: true,
         render: {
-          fillStyle: this.gameSettings.palette.seesaw
+          fillStyle: this.gameSettings.palette.pipe
         }
     });
 
@@ -180,7 +174,6 @@ class PipeGame extends React.Component {
       { 
         friction: this.gameSettings.ballFriction,
         frictionAir: this.gameSettings.ballAirFriction,
-        restitution: this.gameSettings.ballRestitution,
         density: this.gameSettings.ballDensity,
         render: {
           fillSytle: this.gameSettings.palette.ball 
@@ -206,8 +199,8 @@ class PipeGame extends React.Component {
     Events.on(this.gameState.render, "afterRender", (event) => {
       if (!this.gameState.ballActivationTime) { return; }
       const itsTime = this.gameState.lastRandomBlowTime ?
-        event.timestamp - this.gameState.lastRandomBlowTime >= this.gameSettings.blowDelay :
-        event.timestamp - this.gameState.ballActivationTime >= this.gameSettings.blowDelay;
+        event.timestamp - this.gameState.lastRandomBlowTime >= this.gameSettings.randomBlowDelay :
+        event.timestamp - this.gameState.ballActivationTime >= this.gameSettings.randomBlowDelay;
       if (itsTime) {
           console.log('Its time');
           const randomDirection = Math.round(Math.random()) ? -1 : 1;
@@ -299,7 +292,7 @@ class PipeGame extends React.Component {
   initTimerHandling() {
     Events.on(this.gameState.render, "afterRender", (event) => {
       if (this.gameState.currentTimerHasStarted) {
-        this.gameState.currentTimeLeft = Math.round(this.gameSettings.roundTime - ((event.timestamp - this.gameState.currentStartTimestamp) / 1000));
+        this.gameState.currentTimeLeft = Math.round(this.gameSettings.gameTime - ((event.timestamp - this.gameState.currentStartTimestamp) / 1000));
         if (this.gameState.currentTimeLeft <= 0) {
           this.gameState.currentTimeLeft = 0;
           this.endLevel();
@@ -323,7 +316,7 @@ class PipeGame extends React.Component {
   }
 
   startBall(ball) {
-    if (this.gameState.currentLevelHasStarted && ball) {
+    if (this.gameState.gameHasStarted && ball) {
       World.add(this.gameState.engine.world, ball);
       if (!this.gameState.currentTimerHasStarted) {
         this.gameState.currentTimerHasStarted = true;
@@ -337,12 +330,11 @@ class PipeGame extends React.Component {
   startGame() {
     Object.assign(this.gameState, {
       currentTimeSpentOnSpot: 0,
-      currentTimeLeft: this.gameSettings.roundTime,
+      currentTimeLeft: this.gameSettings.gameTime,
       currentBallsLost: 0,
       currentStartTimestamp: 0,
-      currentLevelHasStarted: true,
+      gameHasStarted: true,
       currentTimerHasStarted: false,
-      goalBlockIndex: null,
       measureTimeStart: null,
       measureTimeEnd: null,
     })
@@ -350,23 +342,18 @@ class PipeGame extends React.Component {
   }
 
   endLevel() {
-    this.gameState.currentLevelHasStarted = false;
+    this.gameState.gameHasStarted = false;
     this.gameState.currentTimerHasStarted = false;
-    this.gameState.results.push({
+    this.gameState.result = {
       level: this.gameState.currentLevel,
       timeSpentOnSpot: this.gameState.currentTimeSpentOnSpot,
       ballsLost: this.gameState.currentBallsLost
-    });
+    };
     this.onAfterLevelEnd();
   }
 
   onAfterLevelEnd() {
-    typeof this.props.onLevelEnd === 'function' && this.props.onLevelEnd(this.gameState.results[this.gameState.results.length - 1]);
-    if (this.gameState.currentLevel < 7) {
-      this.startLevel(this.gameState.currentLevel + 1);
-    } else {
-      typeof this.props.onGameEnd === 'function' && this.props.onGameEnd(this.gameState.results);
-    }
+    typeof this.props.onGameEnd === 'function' && this.props.onGameEnd(this.gameState.result);
   }
 
   precision(num) {
