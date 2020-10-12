@@ -25,7 +25,7 @@ class PipeGame extends React.Component {
       goalAreaInactive: '#348498',
       goalAreaActive: '#5bd1d7',
     },
-    gameTime: 5,
+    gameTime: 60,
     canvasHeigth: 600,
     canvasWidth: 600,
     ballSize: 20,
