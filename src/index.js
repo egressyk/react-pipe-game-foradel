@@ -26,9 +26,6 @@ class App extends Component {
     });
   }
 
-  myOnLevelEndFunction(result) {
-    console.log('Last played level results:', result);
-  }
 
   myOnGameEndFunction(results) {
     console.log('End game results:', results);
