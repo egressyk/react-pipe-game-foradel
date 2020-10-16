@@ -7,11 +7,7 @@ const Engine = Matter.Engine,
       World = Matter.World,
       Bodies = Matter.Bodies,
       Body = Matter.Body,
-      Events = Matter.Events,
-      Composite = Matter.Composite,
-      Composites = Matter.Composites,
-      Constraint = Matter.Constraint,
-      Vector = Matter.Vector;
+      Events = Matter.Events;
 
 class PipeGame extends React.Component {
   
@@ -38,14 +34,13 @@ class PipeGame extends React.Component {
     pipePosY: 300,
     pipeWallWidth: 10,
     pipeHeight: 525,
-    ballFriction: 0,
-    ballAirFriction: 0.05,
-    blowForce: 0.03,
-    randomBlowForceMin: 0.02,
-    randomBlowForceMax: 0.08,
+    goalAreaHeight: 100,
+    ballAirFriction: 0.25,
+    blowForce: 0.15,
+    randomBlowForceMin: 0.12,
+    randomBlowForceMax: 0.18,
     ballSpawnTime: 5000,
-    randomBlowDelay: 2000,
-    goalAreaHeight: 50,   
+    randomBlowDelay: 4000,
   }
 
   gameState = {
